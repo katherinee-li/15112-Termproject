@@ -1,9 +1,20 @@
 from cmu_graphics import *
 import random
 import math
+import os
 from PIL import Image
 import time 
-import copy
+
+
+def loadImage(fileName, size=(100, 100)):
+    #images live next to this file, so the game runs from any working directory
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), fileName)
+    try:
+        image = Image.open(path).convert('RGBA')
+    except (FileNotFoundError, OSError):
+        #a missing asset draws as a transparent placeholder instead of crashing
+        image = Image.new('RGBA', size, (0, 0, 0, 0))
+    return CMUImage(image)
 
 
 #classes
@@ -43,6 +54,9 @@ class Character:
         drawLabel(f'MONEY: {int(self.money)}', x+200,y+25, font='monospace', size=15.5, bold = True, fill = 'darkgray')
         drawLabel(f'PROPERTIES: {len(self.prop)}', x+200,y+50, font='monospace', size=15.5, bold = True, fill = 'darkgray')
     
+
+    def canBuy(self, tile):
+        return tile.state == False and self.money >= tile.price
 
     def buy(self, tile):
         self.prop.append(tile)
@@ -90,11 +104,18 @@ class Tiles:
             app.buyMessage = True 
             app.payMessage = False
         elif self.state ==True: #bought
-            app.currentChar.money -=self.price/10
+            owner = None
             for x in app.charList:
                 if self in x.prop:
-                    print("hi")
-                    x.money += self.price/10
+                    owner = x
+            if owner is app.currentChar: #owners do not pay rent on their own tile
+                app.payMessage = False
+                app.buyMessage = False
+                app.endTurn = True
+                return
+            app.currentChar.money -=self.price/10
+            if owner != None:
+                owner.money += self.price/10
 
             app.payMessage = True
             app.buyMessage = False 
@@ -187,7 +208,7 @@ class Button:
         drawLabel(f'{self.message}', self.x+70, self.y+29, font='monospace', bold = True, fill= 'darkgray', size = 23)
 
     def press(self, app, mX, mY):
-        if mX>=self.x and mX<= self.x+80 and mY>= self.y and mY <= self.y+60:
+        if mX>=self.x and mX<= self.x+140 and mY>= self.y and mY <= self.y+58:
             self.function(app)
   
                 
@@ -203,7 +224,7 @@ def rollDiceFunc(app):
 
 def endTurnFunc(app):
     
-    app.currentCharIndex= (app.currentCharIndex+1)%4
+    app.currentCharIndex= (app.currentCharIndex+1)%len(app.charList)
     app.currentChar= app.charList[app.currentCharIndex]  
     app.caughtRoaches= False
     app.caughtUSB= False
@@ -407,56 +428,40 @@ def restart(app):
     #board images
 
     #tile image from https://www.ebay.com/itm/362782826257 
-    app.boardTile= Image.open("tile.png").convert('RGBA')
-    app.boardTile = CMUImage(app.boardTile)
-    app.greyBox= Image.open("greyBox.png").convert('RGBA')
-    app.greyBox = CMUImage(app.greyBox)
+    app.boardTile = loadImage("tile.png")
+    app.greyBox = loadImage("greyBox.png")
 
     #scotty image from https://www.cmubookstore.com
-    app.scotty= Image.open("scotty.png").convert('RGBA')
-    app.scotty = CMUImage(app.scotty)
-    
+    app.scotty = loadImage("scotty.png")
+
     #created myself
-    app.pinkBox= Image.open("pinkBox.png").convert('RGBA')
-    app.pinkBox = CMUImage(app.pinkBox)
+    app.pinkBox = loadImage("pinkBox.png")
 
     #title logo designed from canva https://www.canva.com/design/DAFhOLOIea0/jSF88R4Is71DHzH_bE400w/edit
-    app.titlee= Image.open("title.png").convert('RGBA')
-    app.titlee = CMUImage(app.titlee)
+    app.titlee = loadImage("title.png")
 
     #created myself
-    app.exit= Image.open("exit.png").convert('RGBA')
-    app.exit = CMUImage(app.exit)
+    app.exit = loadImage("exit.png")
 
     #cmu logo from https://www.cmu.edu/brand/downloads/assets/images/scotty-icon-600x600-min.jpg
-    app.logo= Image.open("cmuLogo.png").convert('RGBA')
-    app.logo = CMUImage(app.logo)
+    app.logo = loadImage("cmuLogo.png")
 
     #food image from https://www.cleanpng.com/png-food-poisoning-hand-painted-gourmet-burger-materia-432418/
-    app.food= Image.open("food.png").convert('RGBA')
-    app.food = CMUImage(app.food)
+    app.food = loadImage("food.png")
 
     #fishing image from https://clipartpng.com/?2531,cockroach-png-clip-art
-    app.fishing= Image.open("fishing.png").convert('RGBA')
-    app.fishing = CMUImage(app.fishing)
+    app.fishing = loadImage("fishing.png")
 
     #usb image from https://www.youtube.com/watch?v=w5g6Nm5m4yA
-    app.usb= Image.open("usb.png").convert('RGBA')
-    app.usb = CMUImage(app.usb)
+    app.usb = loadImage("usb.png")
 
     #dice image from https://www.teacherspayteachers.com/Product/Dice-and-Dominoes-Clipart-Graphics-FREE-306749
-    app.dice1Image= Image.open("dice1.png").convert('RGBA')
-    app.dice1Image = CMUImage(app.dice1Image)
-    app.dice2Image= Image.open("dice2.png").convert('RGBA')
-    app.dice2Image = CMUImage(app.dice2Image)
-    app.dice3Image= Image.open("dice3.png").convert('RGBA')
-    app.dice3Image = CMUImage(app.dice3Image)
-    app.dice4Image= Image.open("dice4.png").convert('RGBA')
-    app.dice4Image = CMUImage(app.dice4Image)
-    app.dice5Image= Image.open("dice5.png").convert('RGBA')
-    app.dice5Image = CMUImage(app.dice5Image)
-    app.dice6Image= Image.open("dice6.png").convert('RGBA')
-    app.dice6Image = CMUImage(app.dice6Image)
+    app.dice1Image = loadImage("dice1.png")
+    app.dice2Image = loadImage("dice2.png")
+    app.dice3Image = loadImage("dice3.png")
+    app.dice4Image = loadImage("dice4.png")
+    app.dice5Image = loadImage("dice5.png")
+    app.dice6Image = loadImage("dice6.png")
 
     
     
@@ -544,7 +549,7 @@ def aiChar(app):
 
             elif app.tileInstance.item =="item3":
                 app.caughtFood = True 
-                app.currentChar.money -=150
+                app.currentChar.money -=160
                 app.tileInstance.item =None
                 app.boughtTileList.remove(app.tileInstance.location)
                 
@@ -608,8 +613,9 @@ def game_onKeyPress(app, key):
 
     if app.buyMessage == True: 
         if key == 'y':
-            app.tileInstance.bought(app)
-            app.currentChar.buy(app.tileInstance) 
+            if app.currentChar.canBuy(app.tileInstance):
+                app.tileInstance.bought(app)
+                app.currentChar.buy(app.tileInstance) 
             app.buyMessage = False
             app.endTurn = True 
 
@@ -677,7 +683,7 @@ def game_onKeyPress(app, key):
                 app.drawItem1=False
                 app.drawItem2=False
                 app.drawItem3=False
-                app.outStore == False
+                app.outStore = False
                 app.inStore = True
                 app.storeMessage = True
                     
@@ -819,7 +825,7 @@ def game_onMousePress(app, mouseX, mouseY):
 
                 if app.tileInstance.item =="item3":
                     app.caughtFood = True 
-                    app.currentChar.money -=150
+                    app.currentChar.money -=160
                     app.tileInstance.item =None
                     app.boughtTileList.remove(app.tileInstance.location)
 
@@ -1098,41 +1104,30 @@ def pathFinder(app):
 
 def pathFindSolve(app, currentX, currentY, count, result):
     if count==app.diceTotal:
-    #if count==15:
-   
+        return [(currentX, currentY)]
 
-        result.append((currentX, currentY))
-        return result
+    moves = []
+    if legalMoveUp(app, currentX-1, currentY):
+        moves.append((currentX-1, currentY))
+    if legalMoveRight(app, currentX, currentY+1):
+        moves.append((currentX, currentY+1))
+    if legalMoveDown(app, currentX+1, currentY):
+        moves.append((currentX+1, currentY))
+    if legalMoveLeft(app, currentX, currentY-1):
+        moves.append((currentX, currentY-1))
 
-    else:
-        if legalMoveUp(app, currentX-1, currentY) and legalMoveRight(app, currentX, currentY+1) and legalMoveDown(app, currentX+1, currentY):
-            return pathFindSolve(app, currentX-1, currentY, count+1, result) + pathFindSolve(app, currentX, currentY+1, count+1, result) + pathFindSolve(app, currentX+1, currentY, count+1, result)
-        
-        elif legalMoveRight(app, currentX, currentY+1) and legalMoveDown(app, currentX+1, currentY):
-            return pathFindSolve(app, currentX, currentY+1, count+1, result) + pathFindSolve(app, currentX+1, currentY, count+1, result)
-       
-        elif legalMoveLeft(app, currentX, currentY-1) and legalMoveDown(app, currentX+1, currentY):
-            return pathFindSolve(app, currentX, currentY-1, count+1, result) + pathFindSolve(app, currentX+1, currentY, count+1, result)
+    if moves == []: #dead end, the piece stops where it is
+        return [(currentX, currentY)]
 
-
-        elif legalMoveUp(app, currentX-1, currentY): #move up
-            return pathFindSolve(app, currentX-1, currentY, count+1, result)
-
-        elif legalMoveRight(app, currentX, currentY+1): #move right
-            return pathFindSolve(app, currentX, currentY+1, count+1, result)
-
-        elif legalMoveDown(app, currentX+1, currentY): #move down
-  
-        
-            return pathFindSolve(app, currentX+1, currentY, count+1, result)
-
-        elif legalMoveLeft(app, currentX, currentY-1): #move left 
-            return pathFindSolve(app, currentX, currentY-1, count+1, result)
+    paths = []
+    for (nextX, nextY) in moves:
+        paths += pathFindSolve(app, nextX, nextY, count+1, paths)
+    return paths
 
 def legalMoveUp(app, currentX, currentY):
     if currentX < 0 or currentX > 9 or currentY<0 or currentY>9: #off the board
         return False 
-    if (currentX, currentY) not in app.dictt[(currentX+1, currentY)]: #check for node connection
+    if (currentX, currentY) not in app.dictt.get((currentX+1, currentY), []): #check for node connection
         return False 
     else: 
         return True 
@@ -1140,7 +1135,7 @@ def legalMoveUp(app, currentX, currentY):
 def legalMoveRight(app, currentX, currentY):
     if currentX<0 or currentX> 9 or currentY<0 or currentY>9: #off the board
         return False 
-    if (currentX, currentY) not in app.dictt[(currentX, currentY-1)]: #check for node connection
+    if (currentX, currentY) not in app.dictt.get((currentX, currentY-1), []): #check for node connection
         return False 
     else:
         return True 
@@ -1148,14 +1143,14 @@ def legalMoveRight(app, currentX, currentY):
 def legalMoveDown(app, currentX, currentY):
     if currentX<0 or currentX> 9 or currentY<0 or currentY>9: #off the board
         return False 
-    if (currentX, currentY) not in app.dictt[(currentX-1, currentY)]: #check for node connection
+    if (currentX, currentY) not in app.dictt.get((currentX-1, currentY), []): #check for node connection
         return False 
     else: return True 
 
 def legalMoveLeft(app, currentX, currentY):
     if currentX<0 or currentX> 9 or currentY<0 or currentY>9: #off the board
         return False 
-    if (currentX, currentY) not in app.dictt[(currentX, currentY+1)]: #check for node connection
+    if (currentX, currentY) not in app.dictt.get((currentX, currentY+1), []): #check for node connection
         return False 
     else: return True 
 
@@ -1277,7 +1272,7 @@ def start_onKeyPress(app, key):
     if app.player1Input:
         if key =='backspace':
             app.playerName1= app.playerName1[:-1]
-        if key !='enter' and key!='backspace':
+        if len(key) == 1:
             app.playerName1 += key  
         if key == 'enter':
             app.charList[0].name = app.playerName1
@@ -1289,7 +1284,7 @@ def start_onKeyPress(app, key):
         if key =='backspace':
             app.playerName2= app.playerName2[:-1]
 
-        if key != 'enter':
+        if len(key) == 1:
             app.playerName2 +=key  
 
         if key == 'enter':
@@ -1301,7 +1296,7 @@ def start_onKeyPress(app, key):
         if key =='backspace':
             app.playerName3= app.playerName3[:-1]
 
-        if key != 'enter':
+        if len(key) == 1:
             app.playerName3 +=key  
 
         if key == 'enter':
@@ -1312,37 +1307,29 @@ def start_onKeyPress(app, key):
    
 
 #win screen
+def getWinners(charList):
+    #returns every name tied for the most money, even when all totals are negative
+    if charList == []:
+        return []
+    bestMoney = max(x.money for x in charList)
+    return [f"{x.name}" for x in charList if x.money == bestMoney]
+
 def win_redrawAll(app):
     drawRect(0, 0, app.width, app.height, fill = "bisque", opacity = 35)
 
     for x in app.charList:
         x.drawInfo(app)
-   
-  
-    charList = copy.copy(app.charList)
-    bestChar1= None
-    bestMoney1 = 0
 
-    for x in charList:
-        currentMoney = x.money
-        if currentMoney> bestMoney1:
-            bestChar1= f"{x.name}"
-            bestMoney1= currentMoney
-        elif currentMoney == bestMoney1:
-            if isinstance(bestChar1, str): #theres no set yet
-                newBestChar1= []
-                newBestChar1.append(f"{bestChar1}") #add prev name into new set
-                bestChar1=newBestChar1
-            bestChar1.append(f"{x.name}") #add current name into new set
-    
+    winners = getWinners(app.charList)
+
     #first place:
-    if isinstance(bestChar1, str)== False: #multiple winners
+    if len(winners) > 1: #multiple winners
         drawLabel("Winners!", app.width/2, app.height/2-100, font= "monospace", bold= True, size= 40, fill = "darkgray")
-        for nameIndex in range(len(bestChar1)):
-            drawLabel(f"{bestChar1[nameIndex]}",app.width/2-100+ 200*nameIndex, 500, font= "monospace", bold= True, size= 30, fill = "gold")
-    else:
+        for nameIndex in range(len(winners)):
+            drawLabel(f"{winners[nameIndex]}",app.width/2-100+ 200*nameIndex, 500, font= "monospace", bold= True, size= 30, fill = "gold")
+    elif len(winners) == 1:
         drawLabel("Winner!", app.width/2, app.height/2-100, font= "monospace", bold= True, size= 40, fill = "darkgray")
-        drawLabel(f"{bestChar1}",  app.width/2, 450, font= "monospace", bold= True, size= 30, fill = "gold")
+        drawLabel(f"{winners[0]}",  app.width/2, 450, font= "monospace", bold= True, size= 30, fill = "gold")
 
 def win_onKeyPress(app, key):
     if key == "r":
@@ -1352,9 +1339,7 @@ def win_onKeyPress(app, key):
     
 def main():
     runAppWithScreens(initialScreen='start')
-    runApp()
-
-    
 
 
-main()
+if __name__ == '__main__':
+    main()
